@@ -71,13 +71,54 @@ A \emph{forecaster group} is a collection of forecasters running on the same set
 
 Each forecaster in a forecaster group is repeatedly run until no forecaster makes progress (i.e. produces a forecast). When this occurs, they wait a set period of time (typically 10 minutes) before attempting to produce forecasts again.
 
-%\section{Quickstart Guide} \label{sec: quickstart}
-
-%Maybe just go through the steps to get started (citing each section)...
 
 \section{The Forecaster Code} \label{sec: forecaster code}
 
 Will discuss where to find the repository of codes, needed libraries, how to compile, examples.
+
+The repository for the forecasters can be found at
+\begin{center}
+\url{https://github.com/ssmall41/FloodForecasters}
+\end{center}
+This repository includes the code for the forecasters as well as example initialization files. Two other short programs allow for the generation of output database tables for the forecasters.
+
+\subsection{Requirements} \label{sec: requirements}
+
+The forecasters are designed to work with a Unix based system. A version for Windows does not exist, and no plans to create a Windows version exist. Several libraries and programs are required to use the forecasters.
+\begin{description}
+ \item[C Compiler] Such as gcc or icc.
+ \item[MPI] OpenMPI works. Other implementations of MPI should work correctly with the forecasters.
+ \item[ASYNCH] This is available in the repository
+ \begin{center}
+ \url{https://github.com/ssmall41/asynch},
+ \end{center}
+ and is available on the Iowa HPC resources Helium and Neon.
+ \item[Python] A Python interpreter.
+ \item[libssh2] The SSH library.
+ \item[libpq] The libpq library for connecting to PostgreSQL databases.
+\end{description}
+Except for ASYNCH, most of these can be found in standard Linux repositories.
+
+\subsection{Compiling} \label{sec: compiling}
+
+The makefile found in the forecasters repository should correctly compile on the Helium cluster. Modifications to library locations may need to be modified in the makefile if compiling on another system. To compile, simply type
+\begin{center}
+ make <forecaster name>
+\end{center}
+at a unix command line. The <forecaster name> can be any of the four forecasters discussed in Section \ref{sec: forecaster overview}.
+
+\subsection{Programs for Managing Database Tables} \label{sec: programs for managing database tables}
+
+Two additional programs are useful to manage output tables. These programs are not necessary, but may be helpful. The programs are written in C and require the libpq libraries. Both contain a comment at their beginning with instructions for compiling. Adjustments may need to be made to these instructions depending upon library locations on the local computing system. The programs are very simple, and can be modified easily to change functionality (for example, add table schema, change target database).
+
+CREATETABLES (with source createtables.c) creates the output tables, functions, triggers, and indices. Two command line inputs are required: a model name (this is attached to each table and should match the forecast file (see Section \ref{sec: forecast files})), and the program type (either ``forecast'' or ``maps''). The program type ``forecast'' creates the needed database objects for the forecasters ASYNCHPERSIS and ASYNCHPERSIS\_END. The program type ``maps'' creates the objects for forecasters FORECASTER\_MAPS and FORECASTER\_MAPS\_END. Within the code, a flag called \emph{new\_version} can be set to 1 (true) if the database uses PostgreSQL 9.0 or above. Otherwise, set the flag to 0.
+
+DELETETABLES (with source deletetables.c) drops all the database objects created by CREATETABLES. This program only needs the model name passed as a command line parameter.
+
+\subsection{Examples} \label{sec: examples}
+
+An example is provided in the repository. All the intput files are provided; however, the database connection files are missing information (hostname, username, password). The submit script for Helium \emph{foreaster.sh} shows two different approaches: starting an individual forecaster and starting a forecaster group. The directory \emph{examples} holds all the needed input files. Output files are also written in a subdirectory of \emph{examples}.
+
 
 \section{Forecaster Inputs} \label{sec: forecaster inputs}
 
@@ -398,7 +439,7 @@ Restarting an individual forecaster may require more effort. If running, the for
 
 \section{Current Realtime Flood Forecasting Setup} \label{sec: current realtime flood forecasting setup}
 
-This is being developed...
+The realtime flood forecasting system displayed on IFIS is separate from other IFC infustructure. This provides better (in theory) safety reliability for the system. This section only discusses the components related to the forecasters serving IFIS. Questions about other components of the system should be discussed with Radek, Ibrahim, or Felipe.
 
 \subsection{Data Center Virtual Machine} \label{sec: data center}
 
@@ -410,7 +451,16 @@ The virtual machine is managed by Leandro Avila (leandro-avila@uiowa.edu). Appro
 
 \subsection{Database Tables} \label{sec: database tables}
 
-Input tables are available in a database on the ifisff virtual machine. Output tables are available in a database on the ifis virtual machine.
+Input tables are available in a database on the s-iihr58 server. This will likely change in the near future (discuss with Radek). Output tables are available in a database on the ifisfe virtual machine.
+
+\subsection{Notes about the Forecaster at the Data Center} \label{sec: notes about the data center}
+
+\begin{itemize}
+ \item The forecasters and their source code can be found in the directory \emph{/home/ssma/codes/hydrosim/}. The ASYNCH directory is \emph{/home/ssma/NewAsynchVersion/}. Also noticed the makefile differs from the makefile available in the repository. This is to accommodate the specific computing system.
+ \item The version of PostgreSQL running on ifisfe is somewhat old (8.4). Because of this, an SQL error message about creating the peakforecast table each forecast may occur (table already exists). This is typically safe to ignore. If a newer version of PostgreSQL becomes available, this error should disappear.
+ \item The virtual machine is missing the libssh2 libraries. Ideally, this needs to be installed. The code on the data center has been slightly modified to accommodate this. The last routine in forecaster\_methods.c has been commented, and the last two includes in forecaster\_methods.h are commented.
+\end{itemize}
+
 
 \section{Errors} \label{sec: errors}
 
@@ -446,6 +496,17 @@ need to be stopped. When this happens, the forecasters will usually recover on t
  \item[How to fix] First, verify that nonzero rainfall intensities are not present in the database, but should be. If the values are not there, they must be reingested into the database table. Then the forecaster can be restarted from a timestamp before the missing rainfall data. If the time period with missing rainfall is large, consider running an ASYNCH style simulation to create initial conditions for the forecaster at a recent time.
 \end{description}
 
+
+\section{To Do} \label{sec: to do}
+
+\begin{enumerate}
+ \item The number of days to keep in the archive tables is currently hardcoded (10 in the repository, 2 in the data center). See the main routines of each forecaster. This value should be moved into the forecast file.
+ \item The functions for displaying information on IFIS are hardcoded. See the main routines of each forecaster. A good approach to fix this is to require only calls to database functions (instead of a mix of php scripts and database functions). The function names can be added to the forecast file.
+ \item Only one forecast forcing is allowed. Expanding this to allow multiple forcings can be useful when other estimates (such as evapotranspiration) become available in realtime.
+ \item All four forecasters should ideally be one program.
+\end{enumerate}
+
+Items 1 and 2 are fairly simple tasks. These would be good for someone looking to understand the underlying code. Item 3 will require a understanding of the ASYNCH library routines. Item 4 requires a good understanding of the ASYNCH library as well as the forecaster code.
 
 
 \end{document}

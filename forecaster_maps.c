@@ -63,7 +63,6 @@ int main(int argc,char* argv[])
 	MPI_Status status;
 	char* query = (char*) malloc(1024*sizeof(char));
 	Link* current;
-	//double forecast_time = 10.0*24*60;	//Time (mins) in future to make forecasts
 
 	if(my_rank == 0)
 		printf("\nBeginning initialization...\n*****************************\n");
@@ -72,7 +71,7 @@ int main(int argc,char* argv[])
 
 	//Init asynch object and the river network
 	asynch = Asynch_Init(MPI_COMM_WORLD,&argc,&argv);
-if(my_rank == 0)	printf("Reading global file...\n");
+	if(my_rank == 0)	printf("Reading global file...\n");
 	Asynch_Parse_GBL(asynch,argv[1]);
 
 	//Load Forecast related data
@@ -84,27 +83,27 @@ if(my_rank == 0)	printf("Reading global file...\n");
 	holder = Asynch_Get_Total_Simulation_Time(asynch);
 	longest = (holder < forecast_time) ? forecast_time : holder;
 	Asynch_Set_Total_Simulation_Time(asynch,longest);
-if(my_rank == 0)	printf("Loading network...\n");
+	if(my_rank == 0)	printf("Loading network...\n");
 	Asynch_Load_Network(asynch);
-if(my_rank == 0)	printf("Partitioning network...\n");
+	if(my_rank == 0)	printf("Partitioning network...\n");
 	Asynch_Partition_Network(asynch);
-if(my_rank == 0)	printf("Loading parameters...\n");
+	if(my_rank == 0)	printf("Loading parameters...\n");
 	Asynch_Load_Network_Parameters(asynch,0);
-if(my_rank == 0)	printf("Reading dam and reservoir data...\n");
+	if(my_rank == 0)	printf("Reading dam and reservoir data...\n");
 	Asynch_Load_Dams(asynch);
-if(my_rank == 0)	printf("Setting up numerical error data...\n");
+	if(my_rank == 0)	printf("Setting up numerical error data...\n");
 	Asynch_Load_Numerical_Error_Data(asynch);
-if(my_rank == 0)	printf("Initializing model...\n");
+	if(my_rank == 0)	printf("Initializing model...\n");
 	Asynch_Initialize_Model(asynch);
-if(my_rank == 0)	printf("Loading initial conditions...\n");
+	if(my_rank == 0)	printf("Loading initial conditions...\n");
 	Asynch_Load_Initial_Conditions(asynch);
-if(my_rank == 0)	printf("Loading forcings...\n");
+	if(my_rank == 0)	printf("Loading forcings...\n");
 	Asynch_Load_Forcings(asynch);
-if(my_rank == 0)	printf("Loading output data information...\n");
+	if(my_rank == 0)	printf("Loading output data information...\n");
 	Asynch_Load_Save_Lists(asynch);
-if(my_rank == 0)	printf("Finalizing network...\n");
+	if(my_rank == 0)	printf("Finalizing network...\n");
 	Asynch_Finalize_Network(asynch);
-if(my_rank == 0)	printf("Calculating initial step sizes...\n");
+	if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 	Asynch_Calculate_Step_Sizes(asynch);
 
 	Asynch_Set_Total_Simulation_Time(asynch,holder);
@@ -112,7 +111,6 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 	//Setup output for link id, if needed
 	int setup_id = Asynch_Check_Output(asynch,"LinkID");
 	int setup_timestamp = Asynch_Check_Output(asynch,"Timestamp");
-	//int setup_ratio = Asynch_Check_Output(asynch,"Ratio");
 	if( (setup_id || setup_timestamp) != 0)
 	{
 		if(my_rank == 0)	printf("[%i]: Forecaster needs LinkID (%i), and Timestamp (%i).\n",my_rank,setup_id,setup_timestamp);
@@ -121,7 +119,6 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 	Init_Output_User_forecastparams(asynch);
 	Asynch_Set_Output(asynch,"LinkID",ASYNCH_INT,(void (*)(double,VEC*,VEC*,VEC*,int,void*)) &Output_Linkid,NULL,0);
 	Asynch_Set_Output(asynch,"Timestamp",ASYNCH_INT,(void (*)(double,VEC*,VEC*,VEC*,int,void*)) &Output_Timestamp,NULL,0);
-	//Asynch_Set_Output(asynch,"Ratio",ASYNCH_DOUBLE,(void (*)(double,VEC*,VEC*,VEC*,int,void*)) &Output_Ratio,NULL,0);
 
 	//Setup the peakflow information for maps
 	int setup_peakflow_maps = Asynch_Check_Peakflow_Output(asynch,"Forecast_Maps");
@@ -201,7 +198,6 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	//Make some initializations and checks
-	//unsigned int history_time = 5*24*60*60;	//Amount of history to store for hydrographs and peakflows
 	short unsigned int hr1 = 0;	//Hour of the day to perform maintainance on database
 	short unsigned int hr2 = 12;	//Hour of the day to perform maintainance on database
 	unsigned int wait_time = 120;	//Time to sleep if no rainfall data is available
@@ -209,9 +205,7 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 	unsigned int db_retry_time = 5;	//Time (secs) to wait if a database error occurs
 	unsigned int num_future_peakflow_times = 9;
 	double future_peakflow_times[] = {60.0, 180.0, 360.0, 720.0, 1440.0, 2880.0, 4320.0, 5760.0, 7200.0};
-	//unsigned int num_rainsteps = 3;	//Number of rainfall intensities to use for the next forecast
 	unsigned int num_rainsteps = Forecaster->num_rainsteps;	//Number of rainfall intensities to use for the next forecast
-	//if(my_rank == 0 && asynch->GlobalVars->increment < num_rainsteps + 3)
 	if(my_rank == 0 && asynch->forcings[forecast_idx]->increment < num_rainsteps + 3)
 		printf("Warning: Increment for rain should probably be %u.\n",num_rainsteps + 3);
 	asynch->forcings[forecast_idx]->increment = num_rainsteps;	//!!!! Not necessary, but makes me feel better. The solvers should really not do the last step where they download nothing. !!!!
@@ -220,7 +214,6 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 	unsigned int nextraintime,repeat_for_errors,nextforcingtime;
 	short int halt = 0;
 	int isnull;
-	//int message_buffer[1 + asynch->GlobalVars->num_forcings];
 	short int vac_hydros = 0,vac_maps = 0,vac_peakflows = 0;	//0 if no vacuum has occured, 1 if vacuum has occured (during a specific hour)
 	unsigned int last_file = asynch->forcings[forecast_idx]->last_file;
 	unsigned int first_file = asynch->forcings[forecast_idx]->first_file;
@@ -229,15 +222,28 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 		if(backup[i] != NULL)	v_copy(asynch->sys[i]->list->tail->y_approx,backup[i]);
 
 	double simulation_time_with_data = 0.0;
-	//for(i=0;i<asynch->GlobalVars->num_forcings;i++)
-	//	if(asynch->forcings[i]->flag == 5)	simulation_time_with_data = max(simulation_time_with_data,asynch->forcings[i]->file_time * asynch->forcings[i]->num_rainsteps);
 	simulation_time_with_data = max(simulation_time_with_data,asynch->forcings[forecast_idx]->file_time * Forecaster->num_rainsteps);
 
 	//Setup temp files
 	Set_Output_User_forecastparams(asynch,first_file);
-	//Set_Output_PeakflowUser_Offset(asynch,first_file);
 	Asynch_Set_Total_Simulation_Time(asynch,forecast_time);
 	Asynch_Prepare_Temp_Files(asynch);
+
+	//Check if there is a schema used for the hydrograph archive
+	int place,tablename_len = strlen(asynch->GlobalVars->hydro_table);
+	char schema[128]; schema[0] = '\0';
+	for(place=tablename_len-1;place>-1;place--)
+	{
+		if(asynch->GlobalVars->hydro_table[place] == '.')
+		{
+			asynch->GlobalVars->hydro_table[place] = '\0';
+			strcpy(schema,asynch->GlobalVars->hydro_table);
+			asynch->GlobalVars->hydro_table[place] = '.';
+			schema[place] = '.';
+			schema[place+1] = '\0';
+			break;
+		}
+	}
 
 	//Make some initializations to the database
 	if(my_rank == 0)
@@ -268,30 +274,30 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 		PQclear(res);
 
 		//Make sure the hydroforecast tables are set correctly
-		CheckPartitionedTable(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],asynch->GlobalVars,Forecaster,num_tables,"archive_hydroforecast","forecast_time");
+		CheckPartitionedTable(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],asynch->GlobalVars,Forecaster,num_tables,"archive_hydroforecast","forecast_time",schema);
 
 		//Clear the future hydrographs in archive
-		DeleteFutureValues(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],num_tables,asynch->GlobalVars,"archive_hydroforecast",Forecaster->model_name,first_file,1);
+		DeleteFutureValues(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],num_tables,asynch->GlobalVars,"archive_hydroforecast",Forecaster->model_name,first_file,1,schema);
 
 		//Disconnect from hydrograph database, connect to peakflow database
 		DisconnectPGDB(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT]);
 		ConnectPGDB(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT]);
 
 		//Make sure the peakflow tables are set correctly
-		CheckPartitionedTable(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],asynch->GlobalVars,Forecaster,num_tables,"archive_peakflows","forecast_time");
+		CheckPartitionedTable(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],asynch->GlobalVars,Forecaster,num_tables,"archive_peakflows","forecast_time",schema);
 
 		//Clear all future peakflows
-		DeleteFutureValues(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],num_tables,asynch->GlobalVars,"archive_peakflows",Forecaster->model_name,first_file,1);
+		DeleteFutureValues(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],num_tables,asynch->GlobalVars,"archive_peakflows",Forecaster->model_name,first_file,1,schema);
 
 		//Disconnect from peakflow database, connect to snapshot database
 		DisconnectPGDB(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT]);
 		ConnectPGDB(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT]);
 
 		//Make sure the map tables are set correctly
-		CheckPartitionedTable(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],asynch->GlobalVars,Forecaster,num_tables,"archive_maps","forecast_time");
+		CheckPartitionedTable(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],asynch->GlobalVars,Forecaster,num_tables,"archive_maps","forecast_time",schema);
 
 		//Clear all future maps
-		DeleteFutureValues(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],num_tables,asynch->GlobalVars,"archive_maps",Forecaster->model_name,first_file,0);
+		DeleteFutureValues(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],num_tables,asynch->GlobalVars,"archive_maps",Forecaster->model_name,first_file,0,schema);
 
 		//Disconnect from snapshot database
 		DisconnectPGDB(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT]);
@@ -317,11 +323,9 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 		Flush_TransData(asynch->my_data);
 
 		//Make some initializations
-		//asynch->forcings[forecast_idx]->raindb_start_time = last_file;								//!!!! This all assumes one forcing from db !!!!
 		first_file = last_file;
 		last_file = last_file + (unsigned int) asynch->forcings[forecast_idx]->file_time * 60 * num_rainsteps;
 		nextforcingtime = first_file + 60 * (unsigned int) rint(asynch->forcings[forecast_idx]->file_time) * (num_rainsteps-1);	//This is the actual timestamp of the last needed forcing data. This will be downloaded (unlike last_file)
-		//nextforcingtime = first_file + 60 * (unsigned int) rint(asynch->forcings[forecast_idx]->file_time) * num_rainsteps;
 
 		//Reset each link
 		Asynch_Set_System_State(asynch,0.0,backup);
@@ -338,26 +342,15 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 
 		//Check if a vacuum should be done
 		//This will happen at hr1
-		//if(my_rank == 0)	PerformTableMaintainance_Maps(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],asynch->GlobalVars,Forecaster,&vac,hr1,num_tables);
 		if(my_rank == 0)
 		{
-			PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],asynch->GlobalVars,Forecaster,&vac_hydros,hr1,num_tables,"archive_hydroforecast");
-			PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],asynch->GlobalVars,Forecaster,&vac_peakflows,hr1,num_tables,"archive_peakflows");
-			PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],asynch->GlobalVars,Forecaster,&vac_maps,hr1,num_tables,"archive_maps");
+			PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],asynch->GlobalVars,Forecaster,&vac_hydros,hr1,num_tables,"archive_hydroforecast",schema);
+			PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],asynch->GlobalVars,Forecaster,&vac_peakflows,hr1,num_tables,"archive_peakflows",schema);
+			PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],asynch->GlobalVars,Forecaster,&vac_maps,hr1,num_tables,"archive_maps",schema);
 		}
 
 		//Make sure all buffer flushing is done
 		MPI_Barrier(MPI_COMM_WORLD);
-
-/*
-		//Dump data for debugging and recovery
-		if(k % 96 == 0)
-		{
-			//sprintf(dump_filename,"%u",last_file);
-			sprintf(dump_filename,"/%u",first_file);
-			Asynch_Take_System_Snapshot(asynch,dump_filename);
-		}
-*/
 
 		//Find the next time where rainfall occurs
 		do
@@ -385,22 +378,13 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 				if(my_rank == 0)
 				{
 					printf("No rainfall values returned from SQL database for forcing %u. %u %u\n",forecast_idx,last_file,isnull);
-					//PerformTableMaintainance_Maps(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],asynch->GlobalVars,Forecaster,&vac,hr1,num_tables);
-					PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],asynch->GlobalVars,Forecaster,&vac_hydros,hr1,num_tables,"archive_hydroforecast");
-					PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],asynch->GlobalVars,Forecaster,&vac_peakflows,hr1,num_tables,"archive_peakflows");
-					PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],asynch->GlobalVars,Forecaster,&vac_maps,hr1,num_tables,"archive_maps");
+					PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],asynch->GlobalVars,Forecaster,&vac_hydros,hr1,num_tables,"archive_hydroforecast",schema);
+					PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],asynch->GlobalVars,Forecaster,&vac_peakflows,hr1,num_tables,"archive_peakflows",schema);
+					PerformTableMaintainance(asynch->db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT],asynch->GlobalVars,Forecaster,&vac_maps,hr1,num_tables,"archive_maps",schema);
 				}
 
 				halt = CheckFinished(Forecaster->halt_filename);
-				if(halt)
-				{
-/*
-					sprintf(dump_filename,"/%u",first_file);
-					Asynch_Take_System_Snapshot(asynch,dump_filename);
-					//DataDump(sys,N,assignments,GlobalVars,first_file);
-*/
-				}
-				else
+				if(!halt)
 				{
 					fflush(stdout);
 					sleep(wait_time);
@@ -413,9 +397,7 @@ if(my_rank == 0)	printf("Calculating initial step sizes...\n");
 		//Read in next set of rainfall data
 
 		//Initialize some data for the first phase of calculations
-		//GlobalVars->maxtime = GlobalVars->file_time * num_rainsteps;
 		Asynch_Set_Total_Simulation_Time(asynch,simulation_time_with_data);		// !!!! This may not work for multiple forcings for forecasting. How do you handle different time resolutions? !!!!
-		//conninfo->time_offset = first_file;
 		current_offset = first_file;
 		Set_Output_User_forecastparams(asynch,current_offset);
 		Set_Output_PeakflowUser_Offset(asynch,current_offset,current_offset);
@@ -471,19 +453,12 @@ printf("first: %u last: %u\n",first_file,last_file);
 
 		for(i=0;i<num_future_peakflow_times;i++)
 		{
-			//t = future_peakflow_times[i] + db_stepsize*num_rainsteps;
 			t = asynch->sys[asynch->my_sys[0]]->last_t;
-			//Asynch_Set_Total_Simulation_Time(asynch,t);
 			Asynch_Set_Total_Simulation_Time(asynch,future_peakflow_times[i] + db_stepsize*num_rainsteps);
 			Asynch_Reset_Peakflow_Data(asynch);
-//if(my_rank == 0)
-//printf("Got %u %u\n",current_offset,current_offset + (unsigned int) (60.0*t+0.1));
 			Set_Output_PeakflowUser_Offset(asynch,current_offset,current_offset + (unsigned int) (60.0*t+0.1));
 			Asynch_Advance(asynch,1);
-//if(WaitForDB(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],10,30*60,1024) && my_rank == 0)
-//printf("[%i]: Error checking forecast upload table. See above error messages.\n",my_rank);
 			UploadPeakflows(asynch,db_retry_time);
-//FreeDBLock(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],1024);
 		}
 
 		Asynch_Reset_Peakflow_Data(asynch);
@@ -491,12 +466,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 		Asynch_Advance(asynch,1);
 
 		Asynch_Activate_Forcing(asynch,forecast_idx);
-/*
-		Asynch_Set_Total_Simulation_Time(asynch,forecast_time);
-		Asynch_Deactivate_Forcing(asynch,forecast_idx);
-		Asynch_Advance(asynch,1);
-		Asynch_Activate_Forcing(asynch,forecast_idx);
-*/
+
 		MPI_Barrier(MPI_COMM_WORLD);
 		if(my_rank == 0)
 		{
@@ -510,25 +480,6 @@ printf("first: %u last: %u\n",first_file,last_file);
 			printf("[%i]: The answer at ID %i at time %.12f is\n",my_rank,asynch->sys[asynch->my_sys[0]]->ID,asynch->sys[asynch->my_sys[0]]->last_t);
 			Print_Vector(asynch->sys[asynch->my_sys[0]]->list->tail->y_approx);
 		}
-
-/*
-		//Upload the peak data to the database **********************************************************************************************
-		MPI_Barrier(MPI_COMM_WORLD);
-		start = time(NULL);
-
-		UploadPeakflows(asynch,db_retry_time);
-
-		MPI_Barrier(MPI_COMM_WORLD);
-		if(my_rank == 0)
-		{
-			stop = time(NULL);
-			printf("[%i]: Total time to transfer peak flow data: %.2f\n",my_rank,difftime(stop,start));
-		}
-*/
-
-//!!!! This will need to be called for each database (hydrosave, peaksave, etc) !!!!
-//if(WaitForDB(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],10,30*60,1024) && my_rank == 0)
-//printf("[%i]: Error checking forecast upload table. See above error messages.\n",my_rank);
 
 		//Upload the hydrographs to the database ********************************************************************************************
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -632,7 +583,7 @@ printf("first: %u last: %u\n",first_file,last_file);
 			//Disconnect
 			DisconnectPGDB(asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT]);
 		}
-//FreeDBLock(asynch->db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT],1024);
+
 		if(my_rank == 0)
 		{
 			time(&stop);
@@ -644,21 +595,6 @@ printf("first: %u last: %u\n",first_file,last_file);
 		//Check if program has received a terminate signal **********************************************************************************
 		k++;
 		halt = CheckFinished(Forecaster->halt_filename);
-/*
-		//If stopping, make a .rec file
-		if(halt)
-		{
-			for(i=0;i<N;i++)
-			{
-				current = asynch->sys[i];
-				if(current->list != NULL)
-					v_copy(backup[i],current->list->tail->y_approx);
-			}
-
-			sprintf(dump_filename,"/%u",last_file);
-			Asynch_Take_System_Snapshot(asynch,dump_filename);
-		}
-*/
 	}
 
 	//Clean up **********************************************************************************************************************************
@@ -674,156 +610,6 @@ printf("first: %u last: %u\n",first_file,last_file);
 	return 0;
 }
 
-/*
-//Checks if the time is right to perform maintainance on the database.
-void PerformTableMaintainance_Maps(ConnData* conninfo_hydros,ConnData* conninfo_peakflows,ConnData* conninfo_maps,UnivVars* GlobalVars,ForecastData* Forecaster,short int* vac,short unsigned int hr1,unsigned int num_tables)
-{
-	int j;
-	time_t start,stop;
-	PGresult* res;
-	char query[GlobalVars->query_size];
-	struct tm* timeinfo;
-	time(&start);
-	timeinfo = localtime(&start);
-
-	if(timeinfo->tm_hour == hr1 && *vac == 0)
-	{
-		printf("[%i]: Performing maintainance. Current time is %s",my_rank,asctime(timeinfo));
-
-		//Adjust partitioned hydroforecast tables
-		ConnectPGDB(conninfo_hydros);
-		sprintf(query,"DROP TABLE archive_hydroforecast_%s_%u;",Forecaster->model_name,num_tables-1);
-		res = PQexec(conninfo_hydros->conn,query);
-		CheckResError(res,"dropping end archive table");
-		PQclear(res);
-
-		for(j=num_tables-2;j>=0;j--)
-		{
-			sprintf(query,"ALTER TABLE archive_hydroforecast_%s_%i RENAME TO archive_hydroforecast_%s_%i;",Forecaster->model_name,j,Forecaster->model_name,j+1);
-			res = PQexec(conninfo_hydros->conn,query);
-			CheckResError(res,"renaming hydroforecast table");
-			PQclear(res);
-
-			sprintf(query,"ALTER INDEX idx_archive_hydroforecast_%s_%i_forecast_time RENAME TO idx_archive_hydroforecast_%s_%i_forecast_time;",Forecaster->model_name,j,Forecaster->model_name,j+1);
-			res = PQexec(conninfo_hydros->conn,query);
-			CheckResError(res,"renaming forecast_time index on hydroforecast archive table");
-			PQclear(res);
-
-			sprintf(query,"ALTER INDEX idx_archive_hydroforecast_%s_%i_link_id RENAME TO idx_archive_hydroforecast_%s_%i_link_id;",Forecaster->model_name,j,Forecaster->model_name,j+1);
-			res = PQexec(conninfo_hydros->conn,query);
-			CheckResError(res,"renaming link_id index on hydroforecast archive table");
-			PQclear(res);
-		}
-
-		sprintf(query,"CREATE TABLE archive_hydroforecast_%s_0 ( ) INHERITS (master_archive_hydroforecast_%s);",Forecaster->model_name,Forecaster->model_name);
-		res = PQexec(conninfo_hydros->conn,query);
-		CheckResError(res,"creating archive_hydroforecast_0");
-		PQclear(res);
-
-		sprintf(query,"CREATE INDEX idx_archive_hydroforecast_%s_0_forecast_time ON archive_hydroforecast_%s_0 USING btree (forecast_time);",Forecaster->model_name,Forecaster->model_name);
-		res = PQexec(conninfo_hydros->conn,query);
-		CheckResError(res,"creating forecast_time index on hydroforecast archive table");
-		PQclear(res);
-
-		sprintf(query,"CREATE INDEX idx_archive_hydroforecast_%s_0_link_id ON archive_hydroforecast_%s_0 USING btree (link_id);",Forecaster->model_name,Forecaster->model_name);
-		res = PQexec(conninfo_hydros->conn,query);
-		CheckResError(res,"creating link_id index on hydroforecast archive table");
-		PQclear(res);
-
-		DisconnectPGDB(conninfo_hydros);
-
-		//Adjust peakflow table
-		ConnectPGDB(conninfo_peakflows);
-		sprintf(query,"DROP TABLE archive_peakflows_%s_%u;",Forecaster->model_name,num_tables-1);
-		res = PQexec(conninfo_peakflows->conn,query);
-		CheckResError(res,"dropping end peakflows archive table");
-		PQclear(res);
-
-		for(j=num_tables-2;j>=0;j--)
-		{
-			sprintf(query,"ALTER TABLE archive_peakflows_%s_%i RENAME TO archive_peakflows_%s_%i;",Forecaster->model_name,j,Forecaster->model_name,j+1);
-			res = PQexec(conninfo_peakflows->conn,query);
-			CheckResError(res,"renaming peakflows table");
-			PQclear(res);
-
-			sprintf(query,"ALTER INDEX idx_archive_peakflows_%s_%i_forecast_time RENAME TO idx_archive_peakflows_%s_%i_forecast_time;",Forecaster->model_name,j,Forecaster->model_name,j+1);
-			res = PQexec(conninfo_peakflows->conn,query);
-			CheckResError(res,"renaming forecast_time index on peakflows archive table");
-			PQclear(res);
-
-			sprintf(query,"ALTER INDEX idx_archive_peakflows_%s_%i_link_id RENAME TO idx_archive_peakflows_%s_%i_link_id;",Forecaster->model_name,j,Forecaster->model_name,j+1);
-			res = PQexec(conninfo_peakflows->conn,query);
-			CheckResError(res,"renaming link_id index on peakflows archive table");
-			PQclear(res);
-		}
-
-		sprintf(query,"CREATE TABLE archive_peakflows_%s_0 ( ) INHERITS (master_archive_peakflows_%s);",Forecaster->model_name,Forecaster->model_name);
-		res = PQexec(conninfo_peakflows->conn,query);
-		CheckResError(res,"creating archive_peakflows_0");
-		PQclear(res);
-
-		sprintf(query,"CREATE INDEX idx_archive_peakflows_%s_0_forecast_time ON archive_peakflows_%s_0 USING btree (forecast_time);",Forecaster->model_name,Forecaster->model_name);
-		res = PQexec(conninfo_peakflows->conn,query);
-		CheckResError(res,"creating forecast_time index on peakflows archive table");
-		PQclear(res);
-
-		sprintf(query,"CREATE INDEX idx_archive_peakflows_%s_0_link_id ON archive_peakflows_%s_0 USING btree (link_id);",Forecaster->model_name,Forecaster->model_name);
-		res = PQexec(conninfo_peakflows->conn,query);
-		CheckResError(res,"creating link_id index on peakflows archive table");
-		PQclear(res);
-
-		DisconnectPGDB(conninfo_peakflows);
-
-		//Adjust maps table
-		ConnectPGDB(conninfo_maps);
-		sprintf(query,"DROP TABLE archive_maps_%s_%u;",Forecaster->model_name,num_tables-1);
-		res = PQexec(conninfo_maps->conn,query);
-		CheckResError(res,"dropping end maps archive table");
-		PQclear(res);
-
-		for(j=num_tables-2;j>=0;j--)
-		{
-			sprintf(query,"ALTER TABLE archive_maps_%s_%i RENAME TO archive_maps_%s_%i;",Forecaster->model_name,j,Forecaster->model_name,j+1);
-			res = PQexec(conninfo_maps->conn,query);
-			CheckResError(res,"renaming maps table");
-			PQclear(res);
-
-			sprintf(query,"ALTER INDEX idx_archive_maps_%s_%i_forecast_time RENAME TO idx_archive_maps_%s_%i_forecast_time;",Forecaster->model_name,j,Forecaster->model_name,j+1);
-			res = PQexec(conninfo_maps->conn,query);
-			CheckResError(res,"renaming forecast_time index on maps table");
-			PQclear(res);
-
-			sprintf(query,"ALTER INDEX idx_archive_maps_%s_%i_link_id RENAME TO idx_archive_maps_%s_%i_link_id;",Forecaster->model_name,j,Forecaster->model_name,j+1);
-			res = PQexec(conninfo_maps->conn,query);
-			CheckResError(res,"renaming link_id index on maps table");
-			PQclear(res);
-		}
-
-		sprintf(query,"CREATE TABLE archive_maps_%s_0 ( ) INHERITS (master_archive_maps_%s);",Forecaster->model_name,Forecaster->model_name);
-		res = PQexec(conninfo_maps->conn,query);
-		CheckResError(res,"creating archive_maps_0");
-		PQclear(res);
-
-		sprintf(query,"CREATE INDEX idx_archive_maps_%s_0_forecast_time ON archive_maps_%s_0 USING btree (forecast_time);",Forecaster->model_name,Forecaster->model_name);
-		res = PQexec(conninfo_maps->conn,query);
-		CheckResError(res,"creating forecast_time index on maps archive table");
-		PQclear(res);
-
-		sprintf(query,"CREATE INDEX idx_archive_maps_%s_0_link_id ON archive_maps_%s_0 USING btree (link_id);",Forecaster->model_name,Forecaster->model_name);
-		res = PQexec(conninfo_maps->conn,query);
-		CheckResError(res,"creating link_id index on maps archive table");
-		PQclear(res);
-
-		DisconnectPGDB(conninfo_maps);
-
-		//Set flag and print the total time
-		*vac = 1;
-		time(&stop);
-		printf("[%i]: Database cleanup complete. Total time %.2f.\n\n",my_rank,difftime(stop,start));
-	}
-	else	if(timeinfo->tm_hour != hr1)	*vac = 0;
-}
-*/
 
 //Calls the function to create peakflows. The function is called repeatedly until the data is sent.
 void UploadPeakflows(asynchsolver* asynch,unsigned int wait_time)
@@ -893,7 +679,6 @@ void Set_Output_User_forecastparams(asynchsolver* asynch,unsigned int offset)
 		forecastparams = (CustomParams*) sys[my_sys[i]]->output_user;
 		forecastparams->ID = sys[my_sys[i]]->ID;
 		forecastparams->offset = offset;
-		//forecastparams->Q_TM = sys[my_sys[i]]->list->tail->y_approx->ve[0];
 	}
 }
 
@@ -926,7 +711,6 @@ void Set_Output_PeakflowUser_Offset(asynchsolver* asynch,unsigned int forecast_t
 
 	for(i=0;i<my_N;i++)
 	{
-		//*(unsigned int*)(sys[my_sys[i]]->peakoutput_user) = offset;
 		peak_params = (CustomParamsMaps*) (sys[my_sys[i]]->peakoutput_user);
 		peak_params->forecast_time = forecast_time;
 		peak_params->period = period;
